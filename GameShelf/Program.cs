@@ -16,9 +16,20 @@ namespace GameShelf
 
         public Task MainAsync(string[] args)
         {
-            // TODO: process args
-            return ProcessUser("PeteVasi");
-            // else return ProcessGeekList(11205);
+            int gl = 0;
+            if (args.Length >= 2 && args[0] == "-u")
+            {
+                return ProcessUser(args[1]);
+            }
+            else if (args.Length >= 2 && args[0] == "-gl" && int.TryParse(args[1], out gl) && gl > 0)
+            {
+                return ProcessGeekList(gl, args.Length >= 3 && args[2] == "-gamelink");
+            }
+            else
+            {
+                Console.WriteLine("Try '-u PeteVasi' or '-gl 11205' or '-gl 11205 -gamelink'...");
+                return Task.CompletedTask;
+            }
         }
 
         private async Task ProcessUser(string username)
@@ -30,6 +41,7 @@ namespace GameShelf
                 .Select(i => new Game
                 {
                     Name = (string)i.Element("name"),
+                    Id = MaybeInt((string)i.Attribute("objectid")) ?? 0,
                     Image = (string)i.Element("image"),
                     Url = "https://boardgamegeek.com/boardgame/" + (string)i.Attribute("objectid"),
                     Rating = MaybeDouble((string)i.Element("stats").Element("rating").Attribute("value")) ?? 0
@@ -44,16 +56,65 @@ namespace GameShelf
         private async Task ProcessGeekList(int listId, bool linkToGame)
         {
             var xml = await client.GetStringAsync($"https://www.boardgamegeek.com/xmlapi/geeklist/{listId}");
-            var gamesXml = await client.GetStringAsync("https://api.geekdo.com/xmlapi2/thing?id=5867,7866&page=1&pagesize=100");
+            XElement items = XElement.Parse(xml);
+            var title = (string)items.Element("title");
+            var games = items
+                .Descendants("item")
+                .Select(i => new Game
+                {
+                    Name = (string)i.Attribute("objectname"),
+                    Id = MaybeInt((string)i.Attribute("objectid")) ?? 0,
+                    Image = "https://cf.geekdo-images.com/thumb/img/BLvY1461ZRxzY_qoatscfR0gQGU=/fit-in/200x150/pic100654.jpg",
+                    Url = linkToGame
+                          ? ("https://boardgamegeek.com/boardgame/" + (string)i.Attribute("objectid"))
+                          : ($"https://www.boardgamegeek.com/geeklist/{listId}/item/" + (string)i.Attribute("id") + "#item" + (string)i.Attribute("id")),
+                    Rating = 0
+                })
+                .ToList();
 
-            Console.Write(xml);
-            Console.Write(gamesXml);
+            var idList = string.Join(",", games.Select(i => i.Id));
+            var gamesXml = await client.GetStringAsync($"https://api.geekdo.com/xmlapi2/thing?id={idList}&stats=1&page=1&pagesize=100");
+            XElement gameItems = XElement.Parse(gamesXml);
+            var gameImages = gameItems
+                .Descendants("item")
+                .Select(i => new
+                {
+                    Id = MaybeInt((string)i.Attribute("id")) ?? 0,
+                    Image = (string)i.Element("image"),
+                    Rating = MaybeDouble((string)i.Element("statistics")?.Element("ratings")?.Element("bayesaverage")?.Attribute("value")) ?? 0
+                });
+
+            foreach (var game in games)
+            {
+                var img = gameImages.FirstOrDefault(i => i.Id == game.Id);
+                if (!string.IsNullOrEmpty(img?.Image))
+                {
+                    game.Image = img.Image;
+                }
+                game.Rating = img?.Rating ?? 0;
+            }
+            Console.Write(HtmlHeader(title));
+            Console.Write(GameImages(games.OrderByDescending(i => i.Rating)));
+            Console.Write(HtmlFooter($"https://www.boardgamegeek.com/geeklist/{listId}"));
         }
 
         private static double? MaybeDouble(string str)
         {
             double value;
             if (!double.TryParse(str, out value))
+            {
+                return null;
+            }
+            else
+            {
+                return value;
+            }
+        }
+
+        private static int? MaybeInt(string str)
+        {
+            int value;
+            if (!int.TryParse(str, out value))
             {
                 return null;
             }

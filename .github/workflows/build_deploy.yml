@@ -40,6 +40,8 @@ jobs:
         run: dotnet GameShelf/bin/Debug/net6.0/GameShelf.dll -u PeteVasi > docs/PeteVasi.html
       - name: "Run: Mrs. Games"
         run: dotnet GameShelf/bin/Debug/net6.0/GameShelf.dll -gl 275162 -gamelink > docs/MrsGames.html
+      - name: "Run: AKHawkster"
+        run: dotnet GameShelf/bin/Debug/net6.0/GameShelf.dll -u AKHawkster > docs/AKHawkster.html
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:

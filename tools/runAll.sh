@@ -14,5 +14,3 @@ dotnet build
 
 dotnet GameShelf/bin/Debug/net6.0/GameShelf.dll -u PeteVasi > ${OUTDIR}/PeteVasi.html
 dotnet GameShelf/bin/Debug/net6.0/GameShelf.dll -gl 275162 -gamelink > ${OUTDIR}/MrsGames.html
-dotnet GameShelf/bin/Debug/net6.0/GameShelf.dll -gl 275179 -gamelink > ${OUTDIR}/ZoomGames.html
-

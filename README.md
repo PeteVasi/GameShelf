@@ -1,2 +1,2 @@
 # GameShelf
-BGG Collections, shown as full-size images
+BGG Collections, shown as full-size images.
